@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Bay — Open-World Crime Game</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="./style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.min.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="top-left">
+    <div id="hp-bar"><div id="hp-fill"></div><span id="hp-text">100</span></div>
+    <div id="money">$0</div>
+  </div>
+  <div id="top-right">
+    <div id="stars">☆☆☆☆☆</div>
+    <canvas id="minimap" width="180" height="180"></canvas>
+  </div>
+  <div id="bottom-left">
+    <div id="mission-title">1 — Hot Wheels</div>
+    <div id="objective">Steal a car and reach the garage</div>
+    <div id="timer"></div>
+  </div>
+  <div id="bottom-right">
+    <div id="speed"></div>
+    <div id="speed-label">ON FOOT</div>
+  </div>
+  <div id="crosshair">+</div>
+  <div id="msg"></div>
+</div>
+<div id="vignette"></div>
+
+<!-- Start menu -->
+<div id="menu" class="overlay">
+  <div class="panel">
+    <h1>NEON BAY</h1>
+    <p class="tagline">A sun-soaked city. A stolen car. Five jobs. One way out.</p>
+    <p class="story">You are Rex, getaway driver for Marla Vane's Bay crew. The Neon Bay PD
+    is already watching. Steal a car, run the packages, lose the heat — and
+    get out clean.</p>
+    <div class="controls">
+      <b>Move</b> WASD &nbsp;·&nbsp; <b>Run</b> Shift &nbsp;·&nbsp; <b>Jump</b> Space<br>
+      <b>Look</b> drag mouse / click to lock &nbsp;·&nbsp; <b>Shoot</b> left click<br>
+      <b>Enter / steal car</b> E &nbsp;·&nbsp; <b>Drive</b> W/S + A/D &nbsp;·&nbsp; <b>Pause</b> Esc
+    </div>
+    <div class="buttons">
+      <button id="btn-new">New Game</button>
+      <button id="btn-continue">Continue</button>
+    </div>
+    <p class="foot">Neon Bay is an original game. No real city, person or brand appears in it.</p>
+  </div>
+</div>
+
+<!-- Pause -->
+<div id="pause" class="overlay" style="display:none">
+  <div class="panel">
+    <h1>PAUSED</h1>
+    <p class="story">The city waits. Your progress is saved.</p>
+    <div class="buttons">
+      <button id="btn-resume">Resume</button>
+      <button id="btn-quit">Save &amp; Quit to Menu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game over -->
+<div id="over" class="overlay" style="display:none">
+  <div class="panel">
+    <h1 id="over-title">WASTED</h1>
+    <p class="story" id="over-sub">Rex went down in the streets of Neon Bay.</p>
+    <div class="buttons">
+      <button id="btn-restart">Try Again</button>
+      <button id="btn-menu">Main Menu</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>

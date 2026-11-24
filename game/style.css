@@ -1,0 +1,38 @@
+/* Neon Bay — HUD and menu styling. */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #14101d; font-family: 'Segoe UI', Arial, sans-serif; }
+#app, #app canvas { position: fixed; inset: 0; display: block; }
+
+#hud { position: fixed; inset: 0; pointer-events: none; color: #fff; z-index: 5; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+#top-left { position: absolute; top: 14px; left: 16px; }
+#hp-bar { position: relative; width: 220px; height: 20px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.35); border-radius: 4px; overflow: hidden; }
+#hp-fill { height: 100%; width: 100%; background: #37d67a; transition: width .2s; }
+#hp-text { position: absolute; inset: 0; text-align: center; font-size: 13px; line-height: 20px; font-weight: 700; }
+#money { margin-top: 6px; font-size: 26px; font-weight: 800; color: #7dff9a; }
+#top-right { position: absolute; top: 14px; right: 16px; text-align: right; }
+#stars { font-size: 26px; letter-spacing: 4px; margin-bottom: 8px; }
+#minimap { border: 2px solid rgba(255,255,255,.4); border-radius: 6px; background: rgba(16,18,26,.85); }
+#bottom-left { position: absolute; left: 16px; bottom: 16px; max-width: 460px; }
+#mission-title { font-size: 19px; font-weight: 800; color: #ffe600; }
+#objective { font-size: 15px; margin-top: 2px; }
+#timer { font-size: 20px; font-weight: 800; color: #ff5a4e; margin-top: 2px; }
+#bottom-right { position: absolute; right: 20px; bottom: 16px; text-align: right; }
+#speed { font-size: 44px; font-weight: 800; line-height: 1; }
+#speed-label { font-size: 13px; letter-spacing: 2px; color: #cfd3dd; }
+#crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); font-size: 26px; color: rgba(255,255,255,.9); display: none; }
+#msg { position: absolute; left: 50%; top: 84px; transform: translateX(-50%); font-size: 19px; font-weight: 700; color: #ffe600; opacity: 0; transition: opacity .3s; text-align: center; white-space: nowrap; }
+#vignette { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0; transition: opacity .12s; background: radial-gradient(ellipse at center, transparent 55%, rgba(255,0,0,.55) 100%); }
+
+.overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, rgba(20,8,32,.88), rgba(8,20,40,.88)); }
+.panel { max-width: 620px; padding: 36px 44px; text-align: center; color: #fff; background: rgba(10,10,18,.72); border: 1px solid rgba(255,230,0,.35); border-radius: 14px; }
+.panel h1 { font-size: 64px; letter-spacing: 6px; color: #ffe600; text-shadow: 0 0 24px rgba(255,45,120,.65); margin-bottom: 8px; }
+.tagline { font-size: 18px; color: #ff9ecf; margin-bottom: 14px; }
+.story { font-size: 15px; line-height: 1.55; color: #dfe3ee; margin-bottom: 16px; }
+.controls { font-size: 14px; line-height: 1.8; color: #b9becd; background: rgba(255,255,255,.06); border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; }
+.controls b { color: #fff; }
+.buttons { display: flex; gap: 12px; justify-content: center; }
+button { pointer-events: auto; cursor: pointer; font-size: 17px; font-weight: 700; padding: 12px 26px; border: none; border-radius: 8px; background: #ffe600; color: #14101d; }
+button:hover { background: #ffea4d; }
+#btn-continue, #btn-menu, #btn-quit { background: #2c3345; color: #fff; }
+#btn-continue:hover, #btn-menu:hover, #btn-quit:hover { background: #3a435c; }
+.foot { margin-top: 18px; font-size: 12px; color: #8a8f9a; }
