@@ -1,94 +1,84 @@
-// Neon Bay — player.js
-// The player on foot and behind the wheel: movement, camera, entering and
-// stealing cars, driving with arcade handling, collisions.
+// Neon Bay player: one character who walks the sidewalks and drives any car
+// they can get into. Handles on-foot movement, driving physics, the chase
+// camera and getting in and out of cars.
 import * as THREE from 'three';
 import { CITY, resolveBuildingCollision } from './city.js';
-import { Car } from './vehicles.js';
 
 export class Player {
   constructor(scene) {
     this.scene = scene;
-    this.pos = new THREE.Vector3(0, 0, 30);
-    this.heading = 0; // facing direction on foot
+    this.pos = new THREE.Vector3(0, 0, 26);
+    this.heading = 0;
     this.speed = 0;
     this.onFoot = true;
-    this.car = null; // Car instance when driving
+    this.car = null;
     this.hp = 100;
     this.money = 0;
     this.wanted = 0;
-    this.camYaw = 0;
+    this.camYaw = Math.PI;
     this.camPitch = 0.42;
-    this.camDist = 9;
     this.vy = 0;
     this.grounded = true;
-    this.lastCrimeT = -999;
-    this.mesh = this.buildFigure();
+
+    // simple figure: capsule body, head, and a pistol in the right hand
+    this.mesh = new THREE.Group();
+    const jacket = new THREE.MeshLambertMaterial({ color: 0xffd23e });
+    const skin = new THREE.MeshLambertMaterial({ color: 0xc98d64 });
+    const pants = new THREE.MeshLambertMaterial({ color: 0x2a3550 });
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 0.85, 4, 10), jacket);
+    body.position.y = 1.05;
+    this.mesh.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), skin);
+    head.position.y = 1.95;
+    this.mesh.add(head);
+    const legs = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.7, 0.35), pants);
+    legs.position.y = 0.35;
+    this.mesh.add(legs);
+    const gun = new THREE.Mesh(
+      new THREE.BoxGeometry(0.09, 0.14, 0.55),
+      new THREE.MeshLambertMaterial({ color: 0x181818 })
+    );
+    gun.position.set(0.48, 1.15, 0.3);
+    this.mesh.add(gun);
+    this.mesh.position.copy(this.pos);
     scene.add(this.mesh);
   }
-  buildFigure() {
-    const g = new THREE.Group();
-    const jacket = new THREE.MeshStandardMaterial({ color: 0xff2d78, roughness: 0.7 });
-    const pants = new THREE.MeshStandardMaterial({ color: 0x1c2433, roughness: 0.9 });
-    const skin = new THREE.MeshStandardMaterial({ color: 0xd9a066, roughness: 0.8 });
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 0.7, 4, 10), jacket);
-    body.position.y = 1.15;
-    g.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), skin);
-    head.position.y = 2.0;
-    g.add(head);
-    const hair = new THREE.Mesh(
-      new THREE.SphereGeometry(0.31, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
-      new THREE.MeshStandardMaterial({ color: 0x14100c, roughness: 1 })
-    );
-    hair.position.y = 2.06;
-    g.add(hair);
-    for (const sx of [-0.26, 0.26]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.75, 8), pants);
-      leg.position.set(sx, 0.38, 0);
-      g.add(leg);
-    }
-    // Simple gun in the right hand, visible when aiming.
-    const gun = new THREE.Mesh(
-      new THREE.BoxGeometry(0.1, 0.14, 0.42),
-      new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.6 })
-    );
-    gun.position.set(0.42, 1.25, 0.3);
-    gun.name = 'gun';
-    g.add(gun);
-    return g;
+
+  // Forward direction the camera faces (W walks this way).
+  camForward() {
+    return new THREE.Vector3(-Math.sin(this.camYaw), 0, -Math.cos(this.camYaw));
   }
-  // Move on foot. input: {f,b,l,r,run,jump}. Returns nothing.
+
+  camRight() {
+    return new THREE.Vector3(Math.cos(this.camYaw), 0, -Math.sin(this.camYaw));
+  }
+
   updateOnFoot(dt, input, buildings) {
-    const run = input.run ? 7.5 : 4.2;
-    let mx = 0;
-    let mz = 0;
-    if (input.f) mz += 1;
-    if (input.b) mz -= 1;
-    if (input.l) mx -= 1;
-    if (input.r) mx += 1;
-    const len = Math.hypot(mx, mz);
-    if (len > 0) {
-      mx /= len;
-      mz /= len;
-      // Camera-relative: forward is where the camera looks (camYaw).
-      const sin = Math.sin(this.camYaw);
-      const cos = Math.cos(this.camYaw);
-      const wx = mx * cos - mz * sin;
-      const wz = mx * sin + mz * cos;
-      this.pos.x += wx * run * dt;
-      this.pos.z += wz * run * dt;
-      this.heading = Math.atan2(wx, wz);
+    const fwd = this.camForward();
+    const right = this.camRight();
+    const move = new THREE.Vector3();
+    if (input.f) move.add(fwd);
+    if (input.b) move.sub(fwd);
+    if (input.r) move.add(right);
+    if (input.l) move.sub(right);
+    if (move.lengthSq() > 0) {
+      move.normalize();
+      const run = input.run ? 7.5 : 4.2;
+      this.pos.x += move.x * run * dt;
+      this.pos.z += move.z * run * dt;
+      this.heading = Math.atan2(move.x, move.z);
       this.speed = run;
     } else {
       this.speed = 0;
     }
-    // Jump.
+
+    // jump + gravity
     if (input.jump && this.grounded) {
-      this.vy = 6.5;
+      this.vy = 8.5;
       this.grounded = false;
     }
     if (!this.grounded) {
-      this.vy -= 18 * dt;
+      this.vy -= 22 * dt;
       this.pos.y += this.vy * dt;
       if (this.pos.y <= 0) {
         this.pos.y = 0;
@@ -96,117 +86,147 @@ export class Player {
         this.grounded = true;
       }
     }
+
+    // building collision (radius 0.6) and city bounds
     const fixed = resolveBuildingCollision(buildings, this.pos.x, this.pos.z, 0.6);
-    this.pos.x = THREE.MathUtils.clamp(fixed.x, -CITY.boundX, CITY.boundX);
-    this.pos.z = THREE.MathUtils.clamp(fixed.z, -CITY.boundZ, CITY.boundZ);
+    this.pos.x = fixed.x;
+    this.pos.z = fixed.z;
+    this.pos.x = THREE.MathUtils.clamp(this.pos.x, -CITY.boundX, CITY.boundX);
+    this.pos.z = THREE.MathUtils.clamp(this.pos.z, -CITY.boundZ, CITY.boundZ);
+
+    this.mesh.visible = true;
     this.mesh.position.copy(this.pos);
     this.mesh.rotation.y = this.heading;
-    // Walk bob.
-    const bob = len > 0 ? Math.sin(performance.now() * 0.02) * 0.05 : 0;
-    this.mesh.position.y = this.pos.y + Math.abs(bob);
   }
-  // Drive the current car. input: {f,b,l,r}. Returns {crashed:boolean}.
+
+  // Returns { crashed: boolean } — crashed is true when the car hit a building
+  // or another car hard enough to matter.
   updateDriving(dt, input, buildings, cars) {
     const car = this.car;
-    if (!car) return { crashed: false };
-    const accel = input.f ? 14 : input.b ? -18 : 0;
-    // Arcade integration: accelerate, brake, and roll to a stop.
-    car.speed += accel * dt;
-    car.speed -= Math.sign(car.speed) * 3.2 * dt * (input.f || input.b ? 0.25 : 1);
-    if (Math.abs(car.speed) < 0.15 && !input.f && !input.b) car.speed = 0;
-    car.speed = THREE.MathUtils.clamp(car.speed, -10, car.maxSpeed);
-    const steer = (input.l ? 1 : 0) - (input.r ? 1 : 0);
-    const steerAmount = steer * 1.9 * dt * THREE.MathUtils.clamp(Math.abs(car.speed) / 8, 0, 1) * (car.speed >= 0 ? 1 : -1);
-    car.heading += steerAmount;
-    const prev = car.pos.clone();
-    car.pos.addScaledVector(car.forward(), car.speed * dt);
-    const fixed = resolveBuildingCollision(buildings, car.pos.x, car.pos.z, 2.3);
     let crashed = false;
-    if (fixed.x !== car.pos.x || fixed.z !== car.pos.z) {
-      crashed = Math.abs(car.speed) > 6;
+    if (input.f) car.speed += 14 * dt;
+    if (input.b) car.speed -= 18 * dt;
+    // drag + rolling resistance
+    car.speed -= car.speed * 0.55 * dt;
+    car.speed = THREE.MathUtils.clamp(car.speed, -9, car.maxSpeed);
+
+    // steering scales with speed so the car cannot spin on the spot
+    const steerScale = THREE.MathUtils.clamp(car.speed / 8, -1, 1);
+    if (input.l) car.heading += 1.9 * dt * steerScale;
+    if (input.r) car.heading -= 1.9 * dt * steerScale;
+
+    const fwd = car.forward();
+    car.pos.x += fwd.x * car.speed * dt;
+    car.pos.z += fwd.z * car.speed * dt;
+
+    // building collision (radius 2.3): bounce off and lose speed
+    const fixed = resolveBuildingCollision(buildings, car.pos.x, car.pos.z, 2.3);
+    if (fixed.hit) {
+      if (Math.abs(car.speed) > 6) crashed = true;
+      car.speed *= -0.35;
       car.pos.x = fixed.x;
       car.pos.z = fixed.z;
-      car.speed *= 0.35;
     }
     car.pos.x = THREE.MathUtils.clamp(car.pos.x, -CITY.boundX, CITY.boundX);
     car.pos.z = THREE.MathUtils.clamp(car.pos.z, -CITY.boundZ, CITY.boundZ);
-    // Car-car bumps: push apart, lose speed.
+
+    // car-to-car bumps: push apart and bleed speed
     for (const other of cars) {
       if (other === car) continue;
       const dx = car.pos.x - other.pos.x;
       const dz = car.pos.z - other.pos.z;
       const d = Math.hypot(dx, dz);
-      if (d < 4.6 && d > 0.001) {
-        const push = (4.6 - d) / 2;
+      if (d < 4.4 && d > 0.01) {
+        const push = (4.4 - d) / 2;
         const nx = dx / d;
         const nz = dz / d;
         car.pos.x += nx * push;
         car.pos.z += nz * push;
         other.pos.x -= nx * push;
         other.pos.z -= nz * push;
-        if (Math.abs(car.speed) > 8) {
-          crashed = true;
-          car.speed *= 0.5;
-          other.speed = Math.max(0, other.speed - 3);
-        }
-        other.sync();
+        if (Math.abs(car.speed) > 9) crashed = true;
+        other.speed *= 0.6;
+        car.speed *= 0.7;
       }
     }
-    if (prev.distanceToSquared(car.pos) < 0.000001 && Math.abs(car.speed) > 0.5) {
-      // Stuck against a wall: kill speed.
-      car.speed *= 0.9;
-    }
-    car.sync();
+
     this.pos.copy(car.pos);
     this.heading = car.heading;
     this.speed = car.speed;
+    this.mesh.visible = false;
+    car.sync();
     return { crashed };
   }
+
   enterCar(car) {
     this.car = car;
     this.onFoot = false;
-    this.mesh.visible = false;
     this.pos.copy(car.pos);
     this.heading = car.heading;
+    this.mesh.visible = false;
   }
+
   exitCar() {
     if (!this.car) return;
-    const side = new THREE.Vector3(Math.cos(this.heading), 0, -Math.sin(this.heading));
-    this.pos.copy(this.car.pos).addScaledVector(side, 3);
-    this.pos.y = 0;
+    // step out on the car's left side (+3 units across)
+    const side = new THREE.Vector3(Math.cos(this.car.heading), 0, -Math.sin(this.car.heading));
+    this.pos.set(this.car.pos.x + side.x * 3, 0, this.car.pos.z + side.z * 3);
+    this.car.speed = 0;
     this.car = null;
     this.onFoot = true;
     this.mesh.visible = true;
     this.mesh.position.copy(this.pos);
   }
-  // Third-person camera. Returns nothing; moves the given camera.
+
   updateCamera(camera, dt, input) {
-    if (input.lookDX || input.lookDY) {
-      this.camYaw -= (input.lookDX || 0) * 0.0032;
-      this.camPitch = THREE.MathUtils.clamp(this.camPitch + (input.lookDY || 0) * 0.0028, 0.08, 1.1);
-      input.lookDX = 0;
-      input.lookDY = 0;
+    if (this.onFoot) {
+      // orbit camera: mouse drag / pointer lock feeds camYaw + camPitch
+      if (input.lookDX) {
+        this.camYaw -= input.lookDX * 0.0032;
+        input.lookDX = 0;
+      }
+      if (input.lookDY) {
+        this.camPitch = THREE.MathUtils.clamp(this.camPitch + input.lookDY * 0.0026, 0.08, 1.25);
+        input.lookDY = 0;
+      }
+      const dist = 7.5;
+      const cp = Math.cos(this.camPitch);
+      camera.position.set(
+        this.pos.x + Math.sin(this.camYaw) * cp * dist,
+        this.pos.y + 1.6 + Math.sin(this.camPitch) * dist,
+        this.pos.z + Math.cos(this.camYaw) * cp * dist
+      );
+      camera.lookAt(this.pos.x, this.pos.y + 1.6, this.pos.z);
+    } else {
+      // chase camera: settle behind the car
+      const wantYaw = this.heading + Math.PI;
+      let dy = wantYaw - this.camYaw;
+      while (dy > Math.PI) dy -= Math.PI * 2;
+      while (dy < -Math.PI) dy += Math.PI * 2;
+      this.camYaw += dy * Math.min(1, dt * 4.5);
+      const dist = 11;
+      const height = 4.6;
+      camera.position.set(
+        this.pos.x + Math.sin(this.camYaw) * dist,
+        height,
+        this.pos.z + Math.cos(this.camYaw) * dist
+      );
+      camera.lookAt(this.pos.x, 1.4, this.pos.z);
     }
-    const target = this.onFoot ? this.pos.clone().add(new THREE.Vector3(0, 1.7, 0)) : this.pos.clone().add(new THREE.Vector3(0, 2.0, 0));
-    const dist = this.onFoot ? 8 : 11;
-    const yaw = this.onFoot ? this.camYaw : this.heading + Math.PI;
-    const cx = target.x + Math.sin(yaw) * Math.cos(this.camPitch) * dist;
-    const cz = target.z + Math.cos(yaw) * Math.cos(this.camPitch) * dist;
-    const cy = target.y + Math.sin(this.camPitch) * dist + (this.onFoot ? 0.6 : 1.2);
-    const desired = new THREE.Vector3(cx, Math.max(cy, 1.2), cz);
-    camera.position.lerp(desired, 1 - Math.pow(0.0001, dt));
-    camera.lookAt(target);
   }
+
   reset(x, z) {
     this.pos.set(x, 0, z);
     this.heading = 0;
-    this.hp = 100;
-    this.wanted = 0;
     this.speed = 0;
-    this.onFoot = true;
-    this.car = null;
+    this.hp = 100;
+    this.vy = 0;
+    this.grounded = true;
+    if (this.car) {
+      this.car = null;
+      this.onFoot = true;
+    }
     this.mesh.visible = true;
     this.mesh.position.copy(this.pos);
-    this.camYaw = 0;
   }
 }

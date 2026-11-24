@@ -3,24 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Neon Bay — Open-World Crime Game</title>
+<title>Neon Bay — Open World Crime Game</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="./style.css">
 <script type="importmap">
-{
-  "imports": {
-    "three": "./vendor/three.module.min.js"
-  }
-}
+{"imports": {"three": "./vendor/three.module.min.js"}}
 </script>
 </head>
 <body>
 <div id="app"></div>
 
-<!-- HUD -->
 <div id="hud">
   <div id="top-left">
-    <div id="hp-bar"><div id="hp-fill"></div><span id="hp-text">100</span></div>
+    <div id="hp-bar"><div id="hp-fill"></div></div>
+    <div id="hp-text">100 HP</div>
     <div id="money">$0</div>
   </div>
   <div id="top-right">
@@ -28,12 +24,12 @@
     <canvas id="minimap" width="180" height="180"></canvas>
   </div>
   <div id="bottom-left">
-    <div id="mission-title">1 — Hot Wheels</div>
-    <div id="objective">Steal a car and reach the garage</div>
+    <div id="mission-title">NEON BAY</div>
+    <div id="objective">Free roam — steal a car, cause trouble, or start mission 1</div>
     <div id="timer"></div>
   </div>
   <div id="bottom-right">
-    <div id="speed"></div>
+    <div id="speed">0</div>
     <div id="speed-label">ON FOOT</div>
   </div>
   <div id="crosshair">+</div>
@@ -41,48 +37,39 @@
 </div>
 <div id="vignette"></div>
 
-<!-- Start menu -->
 <div id="menu" class="overlay">
   <div class="panel">
     <h1>NEON BAY</h1>
-    <p class="tagline">A sun-soaked city. A stolen car. Five jobs. One way out.</p>
-    <p class="story">You are Rex, getaway driver for Marla Vane's Bay crew. The Neon Bay PD
-    is already watching. Steal a car, run the packages, lose the heat — and
-    get out clean.</p>
+    <p class="tagline">Steal. Drive. Survive.</p>
+    <p class="story">You wash up in Neon Bay with empty pockets and a name nobody knows.
+    Ray Delgado, the fixer who runs the docks, has five jobs for you — and the
+    Bay Police have five stars with your name on them. Take the jobs, take the
+    cars, take the money, and do not get caught.</p>
     <div class="controls">
-      <b>Move</b> WASD &nbsp;·&nbsp; <b>Run</b> Shift &nbsp;·&nbsp; <b>Jump</b> Space<br>
-      <b>Look</b> drag mouse / click to lock &nbsp;·&nbsp; <b>Shoot</b> left click<br>
-      <b>Enter / steal car</b> E &nbsp;·&nbsp; <b>Drive</b> W/S + A/D &nbsp;·&nbsp; <b>Pause</b> Esc
+      <p><b>WASD / Arrows</b> — walk / drive &nbsp;·&nbsp; <b>Shift</b> — sprint</p>
+      <p><b>Space</b> — jump &nbsp;·&nbsp; <b>E</b> — get in / out of a car (steal it!)</p>
+      <p><b>Mouse</b> — drag to look, click to shoot on foot &nbsp;·&nbsp; <b>M</b> — mute &nbsp;·&nbsp; <b>Esc</b> — pause</p>
     </div>
-    <div class="buttons">
-      <button id="btn-new">New Game</button>
-      <button id="btn-continue">Continue</button>
-    </div>
-    <p class="foot">Neon Bay is an original game. No real city, person or brand appears in it.</p>
+    <button id="btn-new" class="btn">New Game</button>
+    <button id="btn-continue" class="btn ghost">Continue</button>
   </div>
 </div>
 
-<!-- Pause -->
-<div id="pause" class="overlay" style="display:none">
+<div id="pause" class="overlay hidden">
   <div class="panel">
     <h1>PAUSED</h1>
-    <p class="story">The city waits. Your progress is saved.</p>
-    <div class="buttons">
-      <button id="btn-resume">Resume</button>
-      <button id="btn-quit">Save &amp; Quit to Menu</button>
-    </div>
+    <p class="tagline">Neon Bay waits for no one. Except now.</p>
+    <button id="btn-resume" class="btn">Resume</button>
+    <button id="btn-quit" class="btn ghost">Save &amp; Quit to Menu</button>
   </div>
 </div>
 
-<!-- Game over -->
-<div id="over" class="overlay" style="display:none">
+<div id="over" class="overlay hidden">
   <div class="panel">
     <h1 id="over-title">WASTED</h1>
-    <p class="story" id="over-sub">Rex went down in the streets of Neon Bay.</p>
-    <div class="buttons">
-      <button id="btn-restart">Try Again</button>
-      <button id="btn-menu">Main Menu</button>
-    </div>
+    <p id="over-sub" class="tagline">The Bay keeps what it takes.</p>
+    <button id="btn-restart" class="btn">Try Again</button>
+    <button id="btn-menu" class="btn ghost">Main Menu</button>
   </div>
 </div>
 

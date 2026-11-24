@@ -1,164 +1,180 @@
-// Neon Bay — missions.js
-// Story: Rex, a getaway driver for Marla Vane's Bay crew. Five short missions
-// with a beacon marker, a timer where it matters, and a cash payout.
+// Neon Bay story missions: five jobs for Ray Delgado, the fixer who runs
+// the docks. Each mission has a pulsing yellow beacon marking its target.
 import * as THREE from 'three';
 
 export const MISSIONS = [
   {
-    id: 'hot-wheels',
-    title: '1 — Hot Wheels',
-    briefing: 'Marla needs wheels. Steal any car, then bring it to the garage marker.',
-    objective: 'Steal a car and reach the garage',
+    id: 1,
+    title: 'Hot Wheels',
+    briefing: 'Ray needs wheels. Steal any car and bring it to the garage.',
+    objective: 'Steal a car, then drive to the garage',
     marker: { x: 52, z: -52 },
     payout: 250,
+    timer: 0,
   },
   {
-    id: 'bay-runner',
-    title: '2 — Bay Runner',
-    briefing: 'Package in the trunk. Get it to the docks in 90 seconds — no cops, no excuses.',
-    objective: 'Deliver the package to the docks (90s)',
+    id: 2,
+    title: 'Bay Runner',
+    briefing: 'A package for the docks. Ninety seconds. Do not get cute.',
+    objective: 'Deliver the package to the docks',
     marker: { x: 0, z: 168 },
     payout: 500,
     timer: 90,
   },
   {
-    id: 'tail-job',
-    title: '3 — Tail Job',
-    briefing: 'A rival courier is running the same streets. Stay on his tail for 6 seconds.',
-    objective: 'Stay within 15m of the target car for 6s',
-    marker: null,
+    id: 3,
+    title: 'Tail Job',
+    briefing: 'Gold sedan, plate BAY-7. Stay on it. Do not spook it.',
+    objective: 'Follow the gold car — stay within 15 m for 6 s',
+    marker: { x: 0, z: 0 },
     payout: 600,
-    tailTime: 6,
+    timer: 0,
   },
   {
-    id: 'heat-wave',
-    title: '4 — Heat Wave',
-    briefing: 'The heat is on. Lose the cops — get your wanted level to zero at the safehouse.',
-    objective: 'Lose the cops at the safehouse',
+    id: 4,
+    title: 'Heat Wave',
+    briefing: 'The heat is on you. Cool off at the safehouse until it drops.',
+    objective: 'Lose your wanted level at the safehouse',
     marker: { x: -104, z: 104 },
     payout: 500,
+    timer: 0,
   },
   {
-    id: 'neon-getaway',
-    title: '5 — Neon Getaway',
-    briefing: 'One last run, north through the whole city, with every cop in Neon Bay behind you.',
-    objective: 'Reach the north gate with the cops on you',
+    id: 5,
+    title: 'Neon Getaway',
+    briefing: 'One last run. North gate. Do not stop for anything.',
+    objective: 'Reach the north gate',
     marker: { x: 0, z: -182 },
     payout: 1000,
+    timer: 0,
   },
 ];
 
 export class MissionManager {
   constructor(scene) {
     this.scene = scene;
-    this.idx = 0;
+    this.index = -1; // -1 = no mission active
     this.timeLeft = 0;
-    this.tailT = 0;
-    this.done = false;
+    this.tailTime = 0;
     this.targetCar = null;
-    // Beacon: tall translucent pillar + pulsing ground ring.
+
+    // beacon: tall translucent pillar + a pulsing ring on the ground
     this.beacon = new THREE.Group();
     const pillar = new THREE.Mesh(
-      new THREE.CylinderGeometry(2.2, 2.2, 60, 16, 1, true),
-      new THREE.MeshBasicMaterial({ color: 0xffe600, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })
+      new THREE.CylinderGeometry(3, 3, 34, 20, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xffe600,
+        transparent: true,
+        opacity: 0.14,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      })
     );
-    pillar.position.y = 30;
+    pillar.position.y = 17;
     this.beacon.add(pillar);
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(3, 4.2, 32),
-      new THREE.MeshBasicMaterial({ color: 0xffe600, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+    this.ring = new THREE.Mesh(
+      new THREE.RingGeometry(2.4, 3.4, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xffe600,
+        transparent: true,
+        opacity: 0.9,
+        side: THREE.DoubleSide,
+      })
     );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.1;
-    ring.name = 'ring';
-    this.beacon.add(ring);
+    this.ring.rotation.x = -Math.PI / 2;
+    this.ring.position.y = 0.08;
+    this.beacon.add(this.ring);
     this.beacon.visible = false;
     scene.add(this.beacon);
-    this.setMission(0);
   }
+
   get current() {
-    return MISSIONS[this.idx];
+    return this.index >= 0 && this.index < MISSIONS.length ? MISSIONS[this.index] : null;
   }
+
   setMission(i) {
-    this.idx = i;
-    this.timeLeft = this.current?.timer ?? 0;
-    this.tailT = 0;
-    this.done = this.idx >= MISSIONS.length;
+    this.index = i;
+    this.tailTime = 0;
     const m = this.current;
-    if (!m) {
-      this.beacon.visible = false;
-      return;
-    }
-    if (m.marker) {
-      this.beacon.position.set(m.marker.x, 0, m.marker.z);
+    this.timeLeft = m && m.timer ? m.timer : 0;
+    if (m) {
       this.beacon.visible = true;
+      const mp = this.markerPos();
+      this.beacon.position.set(mp.x, 0, mp.z);
     } else {
       this.beacon.visible = false;
     }
+    return m;
   }
+
+  // Where the beacon (and the minimap marker) points right now. For the tail
+  // job it follows the gold target car.
   markerPos() {
     const m = this.current;
-    if (!m) return null;
-    if (m.id === 'tail-job' && this.targetCar) return this.targetCar.pos;
-    return m.marker ? new THREE.Vector3(m.marker.x, 0, m.marker.z) : null;
+    if (!m) return { x: 0, z: 0 };
+    if (m.id === 3 && this.targetCar) {
+      return { x: this.targetCar.pos.x, z: this.targetCar.pos.z };
+    }
+    return { x: m.marker.x, z: m.marker.z };
   }
-  // Returns 'complete' | 'failed' | null. ctx: {player, onCrime, addWanted, spawnTarget, removeTarget}
+
+  // ctx: { player, spawnTarget } — spawnTarget creates the gold tail car.
+  // Returns 'complete', 'failed' or null.
   update(dt, ctx) {
     const m = this.current;
-    if (!m || this.done) return null;
+    if (!m) return null;
     const p = ctx.player;
-    // Beacon pulse.
-    const ring = this.beacon.getObjectByName('ring');
-    if (ring) {
-      const s = 1 + Math.sin(performance.now() * 0.004) * 0.15;
-      ring.scale.set(s, s, 1);
-    }
-    if (m.timer) {
+    const mp = this.markerPos();
+    this.beacon.position.set(mp.x, 0, mp.z);
+    const pulse = 1 + Math.sin(performance.now() * 0.004) * 0.22;
+    this.ring.scale.set(pulse, pulse, 1);
+
+    if (m.timer > 0) {
       this.timeLeft -= dt;
       if (this.timeLeft <= 0) return 'failed';
     }
-    const at = (x, z, r) => Math.hypot(p.pos.x - x, p.pos.z - z) < r;
-    if (m.id === 'hot-wheels') {
-      if (!p.onFoot && at(m.marker.x, m.marker.z, 7)) return 'complete';
-    } else if (m.id === 'bay-runner') {
-      if (at(m.marker.x, m.marker.z, 7)) return 'complete';
-    } else if (m.id === 'tail-job') {
-      if (!this.targetCar) {
-        this.targetCar = ctx.spawnTarget();
-        if (this.targetCar) this.beacon.visible = true;
-      }
+
+    const distToMarker = Math.hypot(p.pos.x - mp.x, p.pos.z - mp.z);
+
+    if (m.id === 1) {
+      // Hot Wheels: reach the garage while inside a stolen car
+      if (!p.onFoot && distToMarker < 7) return 'complete';
+    } else if (m.id === 2) {
+      if (distToMarker < 7) return 'complete';
+    } else if (m.id === 3) {
+      if (!this.targetCar && ctx.spawnTarget) this.targetCar = ctx.spawnTarget();
       if (this.targetCar) {
-        this.beacon.position.copy(this.targetCar.pos);
-        const d = p.pos.distanceTo(this.targetCar.pos);
+        const d = Math.hypot(p.pos.x - this.targetCar.pos.x, p.pos.z - this.targetCar.pos.z);
         if (d < 15) {
-          this.tailT += dt;
-          if (this.tailT >= m.tailTime) return 'complete';
+          this.tailTime += dt;
+          if (this.tailTime >= 6) return 'complete';
         } else {
-          this.tailT = Math.max(0, this.tailT - dt * 0.5);
+          this.tailTime = Math.max(0, this.tailTime - dt * 0.5);
         }
       }
-    } else if (m.id === 'heat-wave') {
-      if (at(m.marker.x, m.marker.z, 9)) {
-        // Safehouse scrubs heat fast.
-        p.wanted = Math.max(0, p.wanted - dt * 0.5);
-        if (p.wanted <= 0) return 'complete';
+    } else if (m.id === 4) {
+      // Heat Wave: inside the safehouse radius the wanted level cools fast
+      if (distToMarker < 10 && p.wanted > 0) {
+        p.wanted = Math.max(0, p.wanted - 0.5 * dt);
       }
-    } else if (m.id === 'neon-getaway') {
-      if (at(m.marker.x, m.marker.z, 8)) return 'complete';
+      if (p.wanted <= 0) return 'complete';
+    } else if (m.id === 5) {
+      if (distToMarker < 9) return 'complete';
     }
     return null;
   }
+
+  // Mission done: pay out and advance to the next one (or finish the story).
   complete() {
     const m = this.current;
-    const payout = m ? m.payout : 0;
-    if (this.targetCar) {
-      this.targetCar = null;
-    }
-    this.setMission(this.idx + 1);
+    if (!m) return 0;
+    const payout = m.payout;
+    this.setMission(this.index + 1 >= MISSIONS.length ? -1 : this.index + 1);
     return payout;
   }
+
+  // Mission failed: restart the same job.
   fail() {
-    // Retry the same mission with a fresh timer.
-    this.setMission(this.idx);
+    this.setMission(this.index);
   }
 }
